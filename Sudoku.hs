@@ -105,9 +105,6 @@ expandShortest g = expandOn isShortest g
 expandNonSingle :: Grid Choices -> [Grid Choices]
 expandNonSingle = expandOn (not . singleton)
 
-expandIfIncomplete :: Grid Choices -> [Grid Choices]
-expandIfIncomplete g = if isComplete g then [g] else expandShortest g
-
 ------------
 -- Filtering
 ------------
@@ -145,8 +142,8 @@ recursiveFilter :: Grid Choices -> [Grid Space]
 recursiveFilter = filter validSolution . enumGrids . fix filterChoices
 
 -- Similar to recursiveFilter except if the grid is still complete i.e.
--- multiple choices remain after filtering then expand the space with
--- the smallest set of choices and resume filtering
+-- multiple choices remain after filtering then expand the first space
+-- with multiple choices and resume filtering
 advancedFilter :: Grid Choices -> [Grid Space]
 advancedFilter g
     | isImpossible fg = []
@@ -162,11 +159,16 @@ advancedFilter g
 blank :: Choices
 blank = [1..9]
 
-b :: Choices
-b = blank
-
-is :: Int -> Choices
-is n = [n]
+parseGrid :: [String] -> Grid Choices
+parseGrid [] = []
+parseGrid (r:rs) = parseRow r : parseGrid rs
+    where
+        parseRow "" = []
+        parseRow (c:cs)
+            | elem c blanks = blank : parseRow cs
+            | isDigit c     = [digitToInt c] : parseRow cs
+            | otherwise     = error $ "Invalid character: " ++ show c
+        blanks = [' ', '_', '-']
 
 ppGrid :: Grid Space -> IO ()
 ppGrid = mapM_ ppRow
@@ -180,28 +182,17 @@ ppChoices = mapM_ ppRow
         showSpace [n] = show n
         showSpace ns = show ns
 
-printMany :: [Grid Space] -> IO ()
-printMany [] = return ()
-printMany (g:gs) = ppGrid g
+printMany :: (a -> IO ()) -> [a] -> IO ()
+printMany _ [] = return ()
+printMany f (x:xs) = f x
     >> putStrLn "--------------"
-    >> printMany gs
+    >> printMany f xs
 
-printManyC :: [Grid Choices] -> IO ()
-printManyC [] = return ()
-printManyC (g:gs) = ppChoices g
-    >> putStrLn "--------------"
-    >> printManyC gs
+ppManyGrids :: [Grid Space] -> IO ()
+ppManyGrids = printMany ppGrid
 
-parseGrid :: [String] -> Grid Choices
-parseGrid [] = []
-parseGrid (r:rs) = parseRow r : parseGrid rs
-    where
-        parseRow "" = []
-        parseRow (c:cs)
-            | elem c blanks = blank : parseRow cs
-            | isDigit c     = [digitToInt c] : parseRow cs
-            | otherwise     = error $ "Invalid character: " ++ show c
-        blanks = [' ', '_', '-']
+ppManyChoices :: [Grid Choices] -> IO ()
+ppManyChoices = printMany ppChoices
 
 -------------
 -- Test Grids

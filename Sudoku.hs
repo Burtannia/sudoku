@@ -148,14 +148,12 @@ recursiveFilter = filter validSolution . enumGrids . fix filterChoices
 -- multiple choices remain after filtering then expand the space with
 -- the smallest set of choices and resume filtering
 advancedFilter :: Grid Choices -> [Grid Space]
-advancedFilter = advancedFilter' . fix filterChoices
-
-advancedFilter' :: Grid Choices -> [Grid Space]
-advancedFilter' g
-    | isImpossible g = []
-    | isComplete g   = enumGrids g
-    | otherwise      = [ g' | x <- expandNonSingle g 
-                            , g' <- advancedFilter x ]
+advancedFilter g
+    | isImpossible fg = []
+    | isComplete fg   = enumGrids fg
+    | otherwise       = concatMap advancedFilter $ expandNonSingle fg
+    where
+        fg = fix filterChoices g
 
 -------------------------------
 -- Grid Construction & Printing
